@@ -159,6 +159,31 @@ def make_classic_api_request(endpoint):
         logging.error(f"An error occurred: {e}")
         return None
 
+# Function to make Jamf Pro API requests
+def make_api_request(endpoint):
+    token = load_token()
+    if not token:
+        status_label.config(text="AUTH FAILED", fg="red")
+        return None
+
+    jamf_url = entry_url.get()
+    api_url = f"{jamf_url}/{endpoint}"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json"
+    }
+
+    try:
+        response = requests.get(api_url, headers=headers)
+        response.raise_for_status()
+        return response.json()  # Return JSON content
+    except requests.exceptions.HTTPError as http_err:
+        logging.error(f"HTTP error occurred: {http_err}")
+        return None
+    except Exception as e:
+        logging.error(f"An error occurred: {e}")
+        return None
+
 # Function to parse the XML response and get the size (for counts)
 def get_size_from_xml(xml_data):
     try:
@@ -175,10 +200,20 @@ def get_size_from_xml(xml_data):
 # Function to update the dashboard
 def update_dashboard():
     # Jamf Pro Version (JSON response)
-    version_data = make_classic_api_request('api/v1/jamf-pro-version')
+    version_data = make_api_request('api/v1/jamf-pro-version')
     if version_data:
-        version_label.config(text=f"Jamf Pro Version: {version_data}")
-
+        try:
+            if isinstance(version_data, dict):
+                version_json = version_data  # Already a dict
+            else:
+                version_json = json.loads(version_data)  # Load as JSON
+            version = version_json.get('version', 'N/A')  # Extract version number
+            version_label.config(text=f"Jamf Pro Version: {version}")
+        except json.JSONDecodeError:
+            logging.error("Failed to parse the version response as JSON.")
+            version_label.config(text="Jamf Pro Version: N/A")
+    else:
+        version_label.config(text="Jamf Pro Version: Not available")
     # Managed Computers
     computers_data = make_classic_api_request('JSSResource/computers')
     computers_count = get_size_from_xml(computers_data)

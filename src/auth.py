@@ -1,5 +1,4 @@
 import requests
-import json
 import logging
 from src.utils import save_token, clear_token, load_credentials
 
@@ -34,7 +33,7 @@ def get_token(jamf_url, client_id, client_secret, grant_type):
         return None
 
 # Function to handle authentication process
-def authenticate(jamf_url, entry_url, status_label):
+def authenticate(jamf_url, status_label):
     logging.debug("Starting authentication process...")
 
     # Clear any existing token

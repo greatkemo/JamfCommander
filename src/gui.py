@@ -1,7 +1,7 @@
 from tkinter import *
 from tkinter import ttk
 
-def setup_gui(root, authenticate_callback, fetch_computer_groups_callback, fetch_mobile_device_groups_callback):
+def setup_gui(root, authenticate_callback):
     root.title("JamfCommander")
     root.geometry('1200x600')
 
@@ -85,10 +85,6 @@ def setup_gui(root, authenticate_callback, fetch_computer_groups_callback, fetch
     tree_devices.heading("Group Name", text="Group Name")
     tree_devices.heading("Group Type", text="Group Type")
     tree_devices.pack(fill="both", expand=True)
-
-    # Buttons to fetch computer and mobile device groups
-    Button(tab_computers, text="Fetch Computer Groups", command=fetch_computer_groups_callback).pack(pady=10)
-    Button(tab_devices, text="Fetch Mobile Device Groups", command=fetch_mobile_device_groups_callback).pack(pady=10)
 
     # Return all necessary elements
     return (entry_url, status_label, version_value, smart_computer_groups_value, static_computer_groups_value, 

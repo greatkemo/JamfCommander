@@ -7,8 +7,12 @@ import xml.etree.ElementTree as ET
 
 TOKEN_FILE = ".jamf_token"
 
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+
 # Load environment variables from .env
 def load_env_variables():
+    from dotenv import load_dotenv
     load_dotenv()
 
 # Save the Jamf Pro URL to the environment
@@ -24,12 +28,15 @@ def load_credentials():
         with open('.jcinf.json') as file:
             credentials = json.load(file)
             logging.debug(f"Credentials loaded successfully: {credentials}")
-            return credentials['client_id'], credentials['client_secret'], credentials['grant_type']
+            return credentials.get('client_id'), credentials.get('client_secret'), credentials.get('grant_type')
     except FileNotFoundError:
         logging.error("The credentials file (.jcinf.json) is missing.")
         return None, None, None
     except KeyError as e:
         logging.error(f"Error loading credentials: Missing key {e}")
+        return None, None, None
+    except json.JSONDecodeError as e:
+        logging.error(f"Error decoding JSON: {e}")
         return None, None, None
 
 # Save the token to a file
@@ -55,8 +62,7 @@ def load_token():
     return None
 
 # Function to make an authenticated Classic API request (XML response)
-def make_classic_api_request(jamf_url, endpoint):
-    token = load_token()
+def make_classic_api_request(jamf_url, endpoint, token):
     if not token:
         logging.error("No token found!")
         return None
@@ -103,8 +109,8 @@ def make_api_request(jamf_url, endpoint):
     except Exception as e:
         logging.error(f"An error occurred: {e}")
         return None
-    
-    # Function to parse XML and extract the <size> element value (count)
+
+# Function to parse XML and extract the <size> element value (count)
 def get_size_from_xml(xml_data):
     try:
         root = ET.fromstring(xml_data)

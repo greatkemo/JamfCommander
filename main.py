@@ -2,7 +2,7 @@ from tkinter import Tk
 from src.auth import authenticate
 from src.api import fetch_computer_groups, fetch_mobile_device_groups, fetch_jamf_pro_version, make_classic_api_request 
 from src.gui import setup_gui
-from src.utils import load_credentials, load_env_variables, save_url_to_env, get_size_from_xml
+from src.utils import load_env_variables, save_url_to_env, get_size_from_xml, load_token
 import os
 import logging
 
@@ -16,64 +16,50 @@ global_jamf_url = None  # Global variable for storing the authenticated Jamf Pro
 load_env_variables()
 
 # Function to update the dashboard with relevant counts
-def update_dashboard():
+def update_dashboard(token):
     global global_jamf_url
 
+    if not global_jamf_url:
+        logging.error("No Jamf URL available to fetch data.")
+        return
+
     # Jamf Pro Version (JSON response)
-    version = fetch_jamf_pro_version(global_jamf_url)
+    version = fetch_jamf_pro_version(global_jamf_url, token)
     if version:
         version_value.config(text=f"{version}")
     else:
         version_value.config(text="N/A")
 
     # Managed Computers (Classic API)
-    computers_data = make_classic_api_request(global_jamf_url, 'JSSResource/computers')
+    computers_data = make_classic_api_request(global_jamf_url, 'JSSResource/computers', token)
     if computers_data:
         managed_computers_value.config(text=get_size_from_xml(computers_data))
     else:
         managed_computers_value.config(text="N/A")
 
-    # Smart Computer Groups and Static Computer Groups
-    computer_groups = fetch_computer_groups(global_jamf_url)
-    if computer_groups:
-        smart_computer_groups_value.config(text=f"{computer_groups['smart_count']}")
-        static_computer_groups_value.config(text=f"{computer_groups['static_count']}")
-    else:
-        smart_computer_groups_value.config(text="N/A")
-        static_computer_groups_value.config(text="N/A")
-
     # Computer Policies (Classic API)
-    policies_data = make_classic_api_request(global_jamf_url, 'JSSResource/policies')
+    policies_data = make_classic_api_request(global_jamf_url, 'JSSResource/policies', token)
     if policies_data:
         computer_policies_value.config(text=get_size_from_xml(policies_data))
     else:
         computer_policies_value.config(text="N/A")
 
     # Computer Profiles (Classic API)
-    profiles_data = make_classic_api_request(global_jamf_url, 'JSSResource/osxconfigurationprofiles')
+    profiles_data = make_classic_api_request(global_jamf_url, 'JSSResource/osxconfigurationprofiles', token)
     if profiles_data:
         computer_profiles_value.config(text=get_size_from_xml(profiles_data))
     else:
         computer_profiles_value.config(text="N/A")
 
     # Managed Mobile Devices (Classic API)
-    mobile_devices_data = make_classic_api_request(global_jamf_url, 'JSSResource/mobiledevices')
+    mobile_devices_data = make_classic_api_request(global_jamf_url, 'JSSResource/mobiledevices', token)
     if mobile_devices_data:
         managed_mobile_devices_value.config(text=get_size_from_xml(mobile_devices_data))
     else:
         managed_mobile_devices_value.config(text="N/A")
 
-    # Smart and Static Mobile Device Groups (Classic API)
-    mobile_groups = fetch_mobile_device_groups(global_jamf_url)
-    if mobile_groups:
-        smart_mobile_groups_value.config(text=f"{mobile_groups['smart_count']}")
-        static_mobile_groups_value.config(text=f"{mobile_groups['static_count']}")
-    else:
-        smart_mobile_groups_value.config(text="N/A")
-        static_mobile_groups_value.config(text="N/A")
-
     # Mobile Device Profiles (Classic API)
-    mobile_profiles_data = make_classic_api_request(global_jamf_url, 'JSSResource/mobiledeviceconfigurationprofiles')
+    mobile_profiles_data = make_classic_api_request(global_jamf_url, 'JSSResource/mobiledeviceconfigurationprofiles', token)
     if mobile_profiles_data:
         mobile_profiles_value.config(text=get_size_from_xml(mobile_profiles_data))
     else:
@@ -89,12 +75,30 @@ def authenticate_callback(jamf_url):
 
     logging.debug(f"Attempting to authenticate with URL: {jamf_url}")
 
-    token = authenticate(jamf_url, entry_url, status_label)  # Pass entry_url and status_label here
+    token = authenticate(jamf_url, status_label)  # Pass only jamf_url and status_label
     if token:
         status_label.config(text="AUTHENTICATED", fg="green")
         global_jamf_url = jamf_url  # Save the authenticated URL globally for future API calls
         save_url_to_env(jamf_url)   # Save the URL to .env after successful login
-        update_dashboard()  # Call this function to update the dashboard after successful authentication
+        update_dashboard(token)  # Call this function to update the dashboard after successful authentication
+
+        # Fetch computer groups
+        computer_groups = fetch_computer_groups(global_jamf_url, tree_computers, token)
+        if computer_groups:
+            smart_computer_groups_value.config(text=f"{computer_groups['smart_count']}")
+            static_computer_groups_value.config(text=f"{computer_groups['static_count']}")
+        else:
+            smart_computer_groups_value.config(text="N/A")
+            static_computer_groups_value.config(text="N/A")
+
+        # Fetch mobile device groups
+        mobile_groups = fetch_mobile_device_groups(global_jamf_url, tree_devices, token)
+        if mobile_groups:
+            smart_mobile_groups_value.config(text=f"{mobile_groups['smart_count']}")
+            static_mobile_groups_value.config(text=f"{mobile_groups['static_count']}")
+        else:
+            smart_mobile_groups_value.config(text="N/A")
+            static_mobile_groups_value.config(text="N/A")
     else:
         status_label.config(text="AUTH FAILED", fg="red")
 
@@ -107,9 +111,7 @@ computer_policies_value, computer_profiles_value, smart_mobile_groups_value, \
 static_mobile_groups_value, mobile_profiles_value, managed_computers_value, \
 managed_mobile_devices_value, tree_computers, tree_devices = setup_gui(
     root, 
-    authenticate_callback, 
-    fetch_computer_groups, 
-    fetch_mobile_device_groups
+    authenticate_callback  # Correctly pass the authenticate callback here
 )
 
 # Load the URL from the environment variable and pre-fill the entry field if available

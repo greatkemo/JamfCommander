@@ -78,27 +78,41 @@ def setup_gui(root, authenticate_callback):
     mobile_profiles_value = tk.Label(tab_dashboard, text="N/A", font=("Arial", 12))
     mobile_profiles_value.grid(row=9, column=1, sticky="w", padx=10, pady=5)
 
+    # Create frames for computer groups and members
+    computer_groups_frame = tk.Frame(tab_computers)
+    computer_groups_frame.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+
+    computer_members_frame = tk.Frame(tab_computers)
+    computer_members_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+
+    # Create frames for device groups and members
+    device_groups_frame = tk.Frame(tab_devices)
+    device_groups_frame.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+
+    device_members_frame = tk.Frame(tab_devices)
+    device_members_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+
     # Computer Groups Treeview
-    tree_computers = ttk.Treeview(tab_computers, columns=("Group Name", "Group Type"), show="headings")
+    tree_computers = ttk.Treeview(computer_groups_frame, columns=("Group Name", "Group Type"), show="headings")
     tree_computers.heading("Group Name", text="Group Name")
     tree_computers.heading("Group Type", text="Group Type")
-    tree_computers.pack(side="left", fill="both", expand=True)
+    tree_computers.pack(fill="both", expand=True)
 
     # Mobile Device Groups Treeview
-    tree_devices = ttk.Treeview(tab_devices, columns=("Group Name", "Group Type"), show="headings")
+    tree_devices = ttk.Treeview(device_groups_frame, columns=("Group Name", "Group Type"), show="headings")
     tree_devices.heading("Group Name", text="Group Name")
     tree_devices.heading("Group Type", text="Group Type")
-    tree_devices.pack(side="left", fill="both", expand=True)
+    tree_devices.pack(fill="both", expand=True)
 
     # Computer Group Members Treeview
-    tree_computer_members = ttk.Treeview(tab_computers, columns=("Member Name",), show="headings")
+    tree_computer_members = ttk.Treeview(computer_members_frame, columns=("Member Name",), show="headings")
     tree_computer_members.heading("Member Name", text="Member Name")
-    tree_computer_members.pack(side="right", fill="both", expand=True)
+    tree_computer_members.pack(fill="both", expand=True)
 
     # Mobile Device Group Members Treeview
-    tree_device_members = ttk.Treeview(tab_devices, columns=("Member Name",), show="headings")
+    tree_device_members = ttk.Treeview(device_members_frame, columns=("Member Name",), show="headings")
     tree_device_members.heading("Member Name", text="Member Name")
-    tree_device_members.pack(side="right", fill="both", expand=True)
+    tree_device_members.pack(fill="both", expand=True)
 
     # Add click event handlers to the group names
     def on_computer_group_click(event):

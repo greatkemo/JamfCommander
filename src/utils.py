@@ -6,13 +6,13 @@ from dotenv import load_dotenv
 import xml.etree.ElementTree as ET
 
 TOKEN_FILE = ".jamf_token"
+TMP_DIR = "tmp"
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 
 # Load environment variables from .env
 def load_env_variables():
-    from dotenv import load_dotenv
     load_dotenv()
 
 # Save the Jamf Pro URL to the environment
@@ -60,6 +60,28 @@ def load_token():
         return token
     logging.error("Token file not found, please authenticate")
     return None
+
+# Load the token from the file (alternative name for compatibility)
+def load_token_from_file():
+    return load_token()
+
+# Ensure the tmp directory exists
+def ensure_tmp_directory():
+    if not os.path.exists(TMP_DIR):
+        os.makedirs(TMP_DIR)
+        logging.debug(f"Created tmp directory: {TMP_DIR}")
+
+# Save data to cache
+def save_to_cache(filename, data):
+    filepath = os.path.join(TMP_DIR, filename)
+    with open(filepath, "w") as cache_file:
+        if isinstance(data, dict):
+            json.dump(data, cache_file)
+        elif isinstance(data, bytes):
+            cache_file.write(data.decode('utf-8'))  # Decode bytes to string
+        else:
+            cache_file.write(data)  # Write string data directly
+    logging.debug(f"Saved data to cache: {filepath}")
 
 # Function to make an authenticated Classic API request (XML response)
 def make_classic_api_request(jamf_url, endpoint, token):

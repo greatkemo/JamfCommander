@@ -1,3 +1,5 @@
 .jcinf.json
 .jamf_token
 .env
+tmp/
+__pycache__/

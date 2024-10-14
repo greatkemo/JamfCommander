@@ -1,6 +1,15 @@
-import xml.etree.ElementTree as ET
-from src.utils import make_classic_api_request, make_api_request
-import requests, logging
+import requests
+import logging
+
+def make_classic_api_request(jamf_url, endpoint, token):
+    try:
+        headers = {"Accept": "application/xml", "Authorization": f"Bearer {token}"}
+        response = requests.get(f"{jamf_url}/{endpoint}", headers=headers)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+        return response.text
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error making Classic API request to {endpoint}: {e}")
+        return None
 
 # Function to fetch the Jamf Pro version using the Jamf Pro API
 def fetch_jamf_pro_version(jamf_url, token):
@@ -21,6 +30,8 @@ def fetch_computer_groups(jamf_url, tree_computers, token):
         response = requests.get(f"{jamf_url}/JSSResource/computergroups", headers=headers)
         response.raise_for_status()  # Raise an exception for HTTP errors
         computer_groups = response.json()
+
+        logging.debug(f"Fetched computer groups: {computer_groups}")
 
         # Clear the tree view
         for item in tree_computers.get_children():
@@ -51,6 +62,8 @@ def fetch_mobile_device_groups(jamf_url, tree_devices, token):
         response = requests.get(f"{jamf_url}/JSSResource/mobiledevicegroups", headers=headers)
         response.raise_for_status()  # Raise an exception for HTTP errors
         mobile_groups = response.json()
+
+        logging.debug(f"Fetched mobile device groups: {mobile_groups}")
 
         # Clear the tree view
         for item in tree_devices.get_children():

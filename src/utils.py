@@ -4,6 +4,7 @@ import logging
 import requests
 from dotenv import load_dotenv
 import xml.etree.ElementTree as ET
+from datetime import datetime, timedelta
 
 TOKEN_FILE = ".jamf_token"
 TMP_DIR = "tmp"
@@ -40,9 +41,13 @@ def load_credentials():
         return None, None, None
 
 # Save the token to a file
-def save_token(token):
+def save_token(token, expiry_time):
+    token_data = {
+        "token": token,
+        "expiry": expiry_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    }
     with open(TOKEN_FILE, "w") as token_file:
-        token_file.write(token)
+        json.dump(token_data, token_file)
     logging.debug(f"Token saved to {TOKEN_FILE}")
 
 # Clear the token file
@@ -55,9 +60,21 @@ def clear_token():
 def load_token():
     if os.path.exists(TOKEN_FILE):
         with open(TOKEN_FILE, "r") as token_file:
-            token = token_file.read().strip()
-        logging.debug("Token loaded from file")
-        return token
+            token_data = json.load(token_file)
+            token = token_data.get("token")
+            expiry = token_data.get("expiry")
+
+            if not token or not expiry:
+                return None
+
+            # Check if the token is expired
+            expiry_time = datetime.strptime(expiry, "%Y-%m-%dT%H:%M:%S.%fZ")
+            if datetime.utcnow() >= expiry_time:
+                logging.debug("Token expired, renewing token")
+                return renew_token()
+
+            logging.debug("Token loaded from file")
+            return token
     logging.error("Token file not found, please authenticate")
     return None
 
@@ -73,6 +90,7 @@ def ensure_tmp_directory():
 
 # Save data to cache
 def save_to_cache(filename, data):
+    ensure_tmp_directory()
     filepath = os.path.join(TMP_DIR, filename)
     with open(filepath, "w") as cache_file:
         if isinstance(data, dict):
@@ -84,10 +102,13 @@ def save_to_cache(filename, data):
     logging.debug(f"Saved data to cache: {filepath}")
 
 # Function to make an authenticated Classic API request (XML response)
-def make_classic_api_request(jamf_url, endpoint, token):
+def make_classic_api_request(jamf_url, endpoint, token=None):
     if not token:
-        logging.error("No token found!")
-        return None
+        token = load_token()
+        if not token:
+            logging.error("No valid token available")
+            return None
+
     # Construct the API URL
     api_url = f"{jamf_url}/{endpoint}"
     headers = {
@@ -144,3 +165,53 @@ def get_size_from_xml(xml_data):
     except ET.ParseError as e:
         logging.error(f"Error parsing XML: {e}")
         return "N/A"
+
+# Renew the token if expired
+def renew_token():
+    jamf_url = os.getenv("JAMF_PRO_URL")
+    client_id, client_secret, grant_type = load_credentials()
+
+    if not jamf_url or not client_id or not client_secret or not grant_type:
+        logging.error("Jamf URL, client ID, client secret, or grant type not set in environment variables.")
+        return None
+
+    token, expires_in = get_token(jamf_url, client_id, client_secret, grant_type)
+    if token:
+        # Calculate the expiry time
+        expiry_time = datetime.utcnow() + timedelta(seconds=expires_in)
+        save_token(token, expiry_time)  # Save token and expiry time for future API requests
+        logging.debug("Token renewed and saved to file")
+        return token
+    else:
+        logging.error("Token renewal failed")
+        return None
+
+# Function to get an OAuth token from Jamf Pro
+def get_token(jamf_url, client_id, client_secret, grant_type):
+    token_url = f"{jamf_url}/api/oauth/token"
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json"
+    }
+    data = {
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "grant_type": grant_type
+    }
+
+    logging.debug(f"Requesting token from {token_url}")
+    logging.debug(f"Request headers: {headers}")
+    logging.debug(f"Request payload: {data}")
+
+    try:
+        response = requests.post(token_url, headers=headers, data=data)
+        response.raise_for_status()  # Will raise an exception for any 4XX/5XX responses
+        token_info = response.json()
+        logging.debug(f"Token received: {token_info}")
+        return token_info.get("access_token"), token_info.get("expires_in")
+    except requests.exceptions.HTTPError as http_err:
+        logging.error(f"HTTP error occurred: {http_err}")
+        return None, None
+    except Exception as e:
+        logging.error(f"An error occurred while requesting the token: {e}")
+        return None, None

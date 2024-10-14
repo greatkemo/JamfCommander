@@ -93,17 +93,19 @@ def setup_gui(root, authenticate_callback):
     device_members_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
 
     # Computer Groups Treeview
-    tree_computers = ttk.Treeview(computer_groups_frame, columns=("Group Name", "Group Type"), show="headings")
+    tree_computers = ttk.Treeview(computer_groups_frame, columns=("Group Name", "Group Type", "Group ID"), show="headings")
     tree_computers.heading("Group Name", text="Group Name")
     tree_computers.heading("Group Type", text="Group Type")
+    tree_computers.heading("Group ID", text="Group ID")
     tree_computers.pack(fill="both", expand=True)
-
+    
     # Mobile Device Groups Treeview
-    tree_devices = ttk.Treeview(device_groups_frame, columns=("Group Name", "Group Type"), show="headings")
+    tree_devices = ttk.Treeview(device_groups_frame, columns=("Group Name", "Group Type", "Group ID"), show="headings")
     tree_devices.heading("Group Name", text="Group Name")
     tree_devices.heading("Group Type", text="Group Type")
+    tree_devices.heading("Group ID", text="Group ID")
     tree_devices.pack(fill="both", expand=True)
-
+    
     # Computer Group Members Treeview
     tree_computer_members = ttk.Treeview(computer_members_frame, columns=("Member Name",), show="headings")
     tree_computer_members.heading("Member Name", text="Member Name")
@@ -117,13 +119,13 @@ def setup_gui(root, authenticate_callback):
     # Add click event handlers to the group names
     def on_computer_group_click(event):
         selected_item = tree_computers.selection()[0]
-        group_name = tree_computers.item(selected_item, "values")[0]
-        fetch_and_display_group_members(group_name, "computers", tree_computer_members)
-
+        group_id = tree_computers.item(selected_item, "values")[2]  # Assuming the group ID is in the third column
+        fetch_and_display_group_members(group_id, "computers", tree_computer_members)
+    
     def on_device_group_click(event):
         selected_item = tree_devices.selection()[0]
-        group_name = tree_devices.item(selected_item, "values")[0]
-        fetch_and_display_group_members(group_name, "devices", tree_device_members)
+        group_id = tree_devices.item(selected_item, "values")[2]  # Assuming the group ID is in the third column
+        fetch_and_display_group_members(group_id, "devices", tree_device_members)
 
     tree_computers.bind("<Double-1>", on_computer_group_click)
     tree_devices.bind("<Double-1>", on_device_group_click)
@@ -133,12 +135,12 @@ def setup_gui(root, authenticate_callback):
             static_mobile_groups_value, mobile_profiles_value, managed_computers_value,
             managed_mobile_devices_value, tree_computers, tree_devices, tree_computer_members, tree_device_members)
 
-def fetch_and_display_group_members(group_name, group_type, tree_members):
+def fetch_and_display_group_members(group_id, group_type, tree_members):
     # Fetch the list of computers or devices in the selected group
     if group_type == "computers":
-        endpoint = f"JSSResource/computergroups/name/{group_name}"
+        endpoint = f"JSSResource/computergroups/id/{group_id}"
     else:
-        endpoint = f"JSSResource/mobiledevicegroups/name/{group_name}"
+        endpoint = f"JSSResource/mobiledevicegroups/id/{group_id}"
 
     token = load_token()
     if not token:
@@ -156,7 +158,7 @@ def fetch_and_display_group_members(group_name, group_type, tree_members):
         members = parse_group_members(response)
         display_group_members(members, tree_members)
         # Cache the response
-        cache_filename = f"{group_type}_{group_name}.xml"
+        cache_filename = f"{group_type}_{group_id}.xml"
         save_to_cache(cache_filename, response)
 
 def parse_group_members(xml_data):

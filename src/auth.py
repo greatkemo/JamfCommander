@@ -1,5 +1,6 @@
 import requests
 import logging
+from datetime import datetime, timedelta
 from src.utils import save_token, clear_token, load_credentials
 
 # Function to get an OAuth token from Jamf Pro
@@ -24,13 +25,13 @@ def get_token(jamf_url, client_id, client_secret, grant_type):
         response.raise_for_status()  # Will raise an exception for any 4XX/5XX responses
         token_info = response.json()
         logging.debug(f"Token received: {token_info}")
-        return token_info.get("access_token")
+        return token_info.get("access_token"), token_info.get("expires_in")
     except requests.exceptions.HTTPError as http_err:
         logging.error(f"HTTP error occurred: {http_err}")
-        return None
+        return None, None
     except Exception as e:
         logging.error(f"An error occurred while requesting the token: {e}")
-        return None
+        return None, None
 
 # Function to handle authentication process
 def authenticate(jamf_url, status_label):
@@ -50,10 +51,12 @@ def authenticate(jamf_url, status_label):
         return None
 
     # Get the OAuth token
-    token = get_token(jamf_url, client_id, client_secret, grant_type)
+    token, expires_in = get_token(jamf_url, client_id, client_secret, grant_type)
 
     if token:
-        save_token(token)  # Save token for future API requests
+        # Calculate the expiry time
+        expiry_time = datetime.utcnow() + timedelta(seconds=expires_in)
+        save_token(token, expiry_time)  # Save token and expiry time for future API requests
         status_label.config(text="AUTHENTICATED", fg="green")
         logging.debug("Authentication successful.")
         return token

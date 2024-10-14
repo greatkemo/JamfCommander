@@ -1,5 +1,6 @@
 import requests
 import logging
+from src.utils import make_classic_api_request, save_to_cache
 
 def make_classic_api_request(jamf_url, endpoint, token):
     try:
@@ -94,3 +95,14 @@ def fetch_computer_groups(jamf_url, tree_computers, token):
     except requests.exceptions.RequestException as e:
         logging.error(f"Error fetching computer groups: {e}")
         return None
+
+# Function to fetch general information of a computer or device
+def fetch_general_info(jamf_url, item_id, item_type, token):
+    endpoint = f"JSSResource/{item_type}/id/{item_id}"
+    response = make_classic_api_request(jamf_url, endpoint, token)
+    if response:
+        # Cache the response
+        cache_filename = f"{item_type}_{item_id}_general.xml"
+        save_to_cache(cache_filename, response)
+        return response
+    return None

@@ -2,7 +2,7 @@ from tkinter import Tk
 from src.auth import authenticate
 from src.api import fetch_computer_groups, fetch_mobile_device_groups, fetch_jamf_pro_version, make_classic_api_request 
 from src.gui import setup_gui
-from src.utils import load_env_variables, save_url_to_env, get_size_from_xml, load_token_from_file
+from src.utils import load_env_variables, save_url_to_env, get_size_from_xml, load_token_from_file, load_token
 import os
 import logging
 
@@ -109,7 +109,8 @@ root = Tk()
 entry_url, status_label, version_value, smart_computer_groups_value, static_computer_groups_value, \
 computer_policies_value, computer_profiles_value, smart_mobile_groups_value, \
 static_mobile_groups_value, mobile_profiles_value, managed_computers_value, \
-managed_mobile_devices_value, tree_computers, tree_devices, tree_computer_members, tree_device_members = setup_gui(
+managed_mobile_devices_value, tree_computers, tree_devices, tree_computer_members, \
+tree_device_members, general_info_text = setup_gui(
     root, 
     authenticate_callback  # Correctly pass the authenticate callback here
 )

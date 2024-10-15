@@ -1,11 +1,12 @@
+import os
+import subprocess
+import logging
 import tkinter as tk
 from tkinter import Tk
 from src.auth import authenticate
 from src.api import fetch_computer_groups, fetch_mobile_device_groups, fetch_jamf_pro_version, fetch_computer_info, fetch_mobile_device_info, parse_computer_info, parse_mobile_device_info, make_classic_api_request
 from src.gui import setup_gui
 from src.utils import load_env_variables, save_url_to_env, get_size_from_xml, load_token
-import os
-import logging
 
 # Enable verbose logging
 logging.basicConfig(level=logging.DEBUG)
@@ -15,6 +16,18 @@ global_jamf_url = None  # Global variable for storing the authenticated Jamf Pro
 
 # Load environment variables from the .env file
 load_env_variables()
+
+# Function to clone or update the GitHub repository
+def clone_or_update_repo():
+    repo_url = "https://github.com/apple/device-management.git"
+    repo_dir = os.path.join("tmp", "device-management")
+
+    if not os.path.exists(repo_dir):
+        logging.info(f"Cloning repository from {repo_url} to {repo_dir}")
+        subprocess.run(["git", "clone", repo_url, repo_dir], check=True)
+    else:
+        logging.info(f"Updating repository in {repo_dir}")
+        subprocess.run(["git", "-C", repo_dir, "pull"], check=True)
 
 # Function to update the dashboard with relevant counts
 def update_dashboard(token):
@@ -82,6 +95,9 @@ def authenticate_callback(jamf_url):
         global_jamf_url = jamf_url  # Save the authenticated URL globally for future API calls
         save_url_to_env(jamf_url)   # Save the URL to .env after successful login
         update_dashboard(token)  # Call this function to update the dashboard after successful authentication
+
+        # Clone or update the GitHub repository
+        clone_or_update_repo()
 
         # Fetch computer groups
         computer_groups = fetch_computer_groups(global_jamf_url, token)

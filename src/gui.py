@@ -2,9 +2,10 @@ import tkinter as tk
 from tkinter import ttk
 import logging
 import os
+import xml.etree.ElementTree as ET
 from src.utils import load_token, make_classic_api_request, save_to_cache
 from src.api import fetch_general_info, parse_computer_info, parse_mobile_device_info
-import xml.etree.ElementTree as ET
+from src.actions import create_actions_section
 
 def setup_gui(root, authenticate_callback):
     root.title("Jamf Commander")
@@ -102,7 +103,7 @@ def setup_gui(root, authenticate_callback):
     tree_computers.column("group_type", width=100)
     tree_computers.column("group_id", width=100)
     tree_computers.pack(fill="both", expand=True)
-    
+
     # Mobile Device Groups Treeview
     tree_devices = ttk.Treeview(device_groups_frame, columns=("group_name", "group_type", "group_id"), show="headings")
     tree_devices.heading("group_name", text="Group Name")
@@ -112,7 +113,7 @@ def setup_gui(root, authenticate_callback):
     tree_devices.column("group_type", width=100)
     tree_devices.column("group_id", width=100)
     tree_devices.pack(fill="both", expand=True)
-    
+
     # Computer Members Treeview
     tree_computer_members = ttk.Treeview(computer_members_frame, columns=("member_name", "member_id"), show="headings")
     tree_computer_members.heading("member_name", text="Member Name")
@@ -120,7 +121,7 @@ def setup_gui(root, authenticate_callback):
     tree_computer_members.column("member_name", width=150)
     tree_computer_members.column("member_id", width=100)
     tree_computer_members.pack(fill="both", expand=True)
-    
+
     # Device Members Treeview
     tree_device_members = ttk.Treeview(device_members_frame, columns=("member_name", "member_id"), show="headings")
     tree_device_members.heading("member_name", text="Member Name")
@@ -131,26 +132,38 @@ def setup_gui(root, authenticate_callback):
 
     # General Information Frame for Computers
     general_info_frame_computers = ttk.LabelFrame(tab_computers, text="Computer Information")
-    general_info_frame_computers.pack(side="right", fill="both", expand=True, padx=10, pady=10)
-    
+    general_info_frame_computers.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+
     # General Information Textbox for Computers
     general_info_text_computers = tk.Text(general_info_frame_computers, wrap="word", height=10)
     general_info_text_computers.pack(fill="both", expand=True)
 
     # General Information Frame for Devices
     general_info_frame_devices = ttk.LabelFrame(tab_devices, text="Device Information")
-    general_info_frame_devices.pack(side="right", fill="both", expand=True, padx=10, pady=10)
-    
+    general_info_frame_devices.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+
     # General Information Textbox for Devices
     general_info_text_devices = tk.Text(general_info_frame_devices, wrap="word", height=10)
     general_info_text_devices.pack(fill="both", expand=True)
+
+    # Actions Section for Computers
+    actions_frame_computers = ttk.LabelFrame(tab_computers, text="Actions")
+    actions_frame_computers.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+
+    # Actions Section for Devices
+    actions_frame_devices = ttk.LabelFrame(tab_devices, text="Actions")
+    actions_frame_devices.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+
+    # Create Actions section for Computers and Devices
+    create_actions_section(actions_frame_computers, 'tmp/device-management/mdm/commands')
+    create_actions_section(actions_frame_devices, 'tmp/device-management/mdm/commands')
 
     # Add click event handlers to the group names
     def on_computer_group_click(event):
         selected_item = tree_computers.selection()[0]
         group_id = tree_computers.item(selected_item, "values")[2]  # Assuming the group ID is in the third column
         fetch_and_display_group_members(group_id, "computers", tree_computer_members)
-    
+
     def on_device_group_click(event):
         selected_item = tree_devices.selection()[0]
         group_id = tree_devices.item(selected_item, "values")[2]  # Assuming the group ID is in the third column
@@ -159,7 +172,7 @@ def setup_gui(root, authenticate_callback):
     def display_general_info(info, text_widget):
         text_widget.delete("1.0", tk.END)
         text_widget.insert(tk.END, info)
-    
+
     def on_computer_member_click(event):
         selected_item = tree_computer_members.selection()[0]
         member_id = tree_computer_members.item(selected_item, "values")[1]  # Assuming the member ID is in the second column
@@ -167,17 +180,17 @@ def setup_gui(root, authenticate_callback):
         if not token:
             logging.error("No token found!")
             return
-    
+
         jamf_url = os.getenv("JAMF_PRO_URL", "")
         if not jamf_url:
             logging.error("No Jamf URL found!")
             return
-    
+
         general_info = fetch_general_info(jamf_url, member_id, "computers", token)
         if general_info:
             formatted_info = parse_computer_info(general_info)
             display_general_info(formatted_info, general_info_text_computers)
-    
+
     def on_device_member_click(event):
         selected_item = tree_device_members.selection()[0]
         member_id = tree_device_members.item(selected_item, "values")[1]  # Assuming the member ID is in the second column
@@ -185,12 +198,12 @@ def setup_gui(root, authenticate_callback):
         if not token:
             logging.error("No token found!")
             return
-    
+
         jamf_url = os.getenv("JAMF_PRO_URL", "")
         if not jamf_url:
             logging.error("No Jamf URL found!")
             return
-    
+
         general_info = fetch_general_info(jamf_url, member_id, "mobiledevices", token)
         if general_info:
             formatted_info = parse_mobile_device_info(general_info)

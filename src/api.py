@@ -1,5 +1,6 @@
 import requests
 import logging
+import xml.etree.ElementTree as ET
 from src.utils import make_classic_api_request, save_to_cache
 
 def make_classic_api_request(jamf_url, endpoint, token):
@@ -25,7 +26,7 @@ def fetch_jamf_pro_version(jamf_url, token):
         return None
 
 # Function to fetch mobile device groups using the Classic API
-def fetch_mobile_device_groups(jamf_url, tree_devices, token):
+def fetch_mobile_device_groups(jamf_url, token):
     try:
         headers = {"Accept": "application/json", "Authorization": f"Bearer {token}"}
         response = requests.get(f"{jamf_url}/JSSResource/mobiledevicegroups", headers=headers)
@@ -34,10 +35,7 @@ def fetch_mobile_device_groups(jamf_url, tree_devices, token):
 
         logging.debug(f"Fetched mobile device groups: {mobile_groups}")
 
-        # Clear the tree view
-        for item in tree_devices.get_children():
-            tree_devices.delete(item)
-
+        groups = []
         smart_count = 0
         static_count = 0
 
@@ -45,7 +43,11 @@ def fetch_mobile_device_groups(jamf_url, tree_devices, token):
             group_name = group['name']
             group_type = "Smart" if group['is_smart'] else "Static"
             group_id = group['id']
-            tree_devices.insert("", "end", values=(group_name, group_type, group_id))
+            groups.append({
+                'name': group_name,
+                'type': group_type,
+                'id': group_id
+            })
 
             if group['is_smart']:
                 smart_count += 1
@@ -53,6 +55,7 @@ def fetch_mobile_device_groups(jamf_url, tree_devices, token):
                 static_count += 1
 
         return {
+            "groups": groups,
             "smart_count": smart_count,
             "static_count": static_count
         }
@@ -61,7 +64,7 @@ def fetch_mobile_device_groups(jamf_url, tree_devices, token):
         return None
 
 # Function to fetch computer groups using the Classic API
-def fetch_computer_groups(jamf_url, tree_computers, token):
+def fetch_computer_groups(jamf_url, token):
     try:
         headers = {"Accept": "application/json", "Authorization": f"Bearer {token}"}
         response = requests.get(f"{jamf_url}/JSSResource/computergroups", headers=headers)
@@ -70,10 +73,7 @@ def fetch_computer_groups(jamf_url, tree_computers, token):
 
         logging.debug(f"Fetched computer groups: {computer_groups}")
 
-        # Clear the tree view
-        for item in tree_computers.get_children():
-            tree_computers.delete(item)
-
+        groups = []
         smart_count = 0
         static_count = 0
 
@@ -81,7 +81,11 @@ def fetch_computer_groups(jamf_url, tree_computers, token):
             group_name = group['name']
             group_type = "Smart" if group['is_smart'] else "Static"
             group_id = group['id']
-            tree_computers.insert("", "end", values=(group_name, group_type, group_id))
+            groups.append({
+                'name': group_name,
+                'type': group_type,
+                'id': group_id
+            })
 
             if group['is_smart']:
                 smart_count += 1
@@ -89,6 +93,7 @@ def fetch_computer_groups(jamf_url, tree_computers, token):
                 static_count += 1
 
         return {
+            "groups": groups,
             "smart_count": smart_count,
             "static_count": static_count
         }
@@ -106,3 +111,35 @@ def fetch_general_info(jamf_url, item_id, item_type, token):
         save_to_cache(cache_filename, response)
         return response
     return None
+
+# Function to fetch and display group members
+def fetch_and_display_group_members(jamf_url, group_id, group_type, token):
+    if group_type == "computers":
+        endpoint = f"JSSResource/computergroups/id/{group_id}"
+    else:
+        endpoint = f"JSSResource/mobiledevicegroups/id/{group_id}"
+
+    response = make_classic_api_request(jamf_url, endpoint, token)
+    if response:
+        members = parse_group_members(response)
+        return members
+    return None
+
+# Function to parse group members from XML data
+def parse_group_members(xml_data):
+    root = ET.fromstring(xml_data)
+    members = []
+    for computer in root.findall(".//computer"):
+        members.append((computer.find("name").text, computer.find("id").text))
+    for device in root.findall(".//mobile_device"):
+        members.append((device.find("name").text, device.find("id").text))
+    return members
+
+# Function to display group members in a treeview
+def display_group_members(members, tree_members):
+    # Clear the existing items in the treeview
+    for item in tree_members.get_children():
+        tree_members.delete(item)
+    # Add the new members to the treeview
+    for member in members:
+        tree_members.insert("", "end", values=member)

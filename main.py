@@ -2,7 +2,7 @@ from tkinter import Tk
 from src.auth import authenticate
 from src.api import fetch_computer_groups, fetch_mobile_device_groups, fetch_jamf_pro_version, make_classic_api_request 
 from src.gui import setup_gui
-from src.utils import load_env_variables, save_url_to_env, get_size_from_xml, load_token_from_file, load_token
+from src.utils import load_env_variables, save_url_to_env, get_size_from_xml, load_token_from_file
 import os
 import logging
 
@@ -83,8 +83,10 @@ def authenticate_callback(jamf_url):
         update_dashboard(token)  # Call this function to update the dashboard after successful authentication
 
         # Fetch computer groups
-        computer_groups = fetch_computer_groups(global_jamf_url, tree_computers, token)
+        computer_groups = fetch_computer_groups(global_jamf_url, token)
         if computer_groups:
+            for group in computer_groups['groups']:
+                tree_computers.insert("", "end", values=(group['name'], group['type'], group['id']))
             smart_computer_groups_value.config(text=f"{computer_groups['smart_count']}")
             static_computer_groups_value.config(text=f"{computer_groups['static_count']}")
         else:
@@ -92,8 +94,10 @@ def authenticate_callback(jamf_url):
             static_computer_groups_value.config(text="N/A")
 
         # Fetch mobile device groups
-        mobile_groups = fetch_mobile_device_groups(global_jamf_url, tree_devices, token)
+        mobile_groups = fetch_mobile_device_groups(global_jamf_url, token)
         if mobile_groups:
+            for group in mobile_groups['groups']:
+                tree_devices.insert("", "end", values=(group['name'], group['type'], group['id']))
             smart_mobile_groups_value.config(text=f"{mobile_groups['smart_count']}")
             static_mobile_groups_value.config(text=f"{mobile_groups['static_count']}")
         else:
@@ -109,8 +113,8 @@ root = Tk()
 entry_url, status_label, version_value, smart_computer_groups_value, static_computer_groups_value, \
 computer_policies_value, computer_profiles_value, smart_mobile_groups_value, \
 static_mobile_groups_value, mobile_profiles_value, managed_computers_value, \
-managed_mobile_devices_value, tree_computers, tree_devices, tree_computer_members, \
-tree_device_members, general_info_text = setup_gui(
+managed_mobile_devices_value, tree_computers, tree_devices, tree_computer_members, tree_device_members, \
+general_info_text_computers, general_info_text_devices = setup_gui(
     root, 
     authenticate_callback  # Correctly pass the authenticate callback here
 )

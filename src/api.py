@@ -101,6 +101,70 @@ def fetch_computer_groups(jamf_url, token):
         logging.error(f"Error fetching computer groups: {e}")
         return None
 
+# Function to fetch detailed information for a computer
+def fetch_computer_info(jamf_url, computer_id, token):
+    try:
+        headers = {"Accept": "application/xml", "Authorization": f"Bearer {token}"}
+        response = requests.get(f"{jamf_url}/JSSResource/computers/id/{computer_id}", headers=headers)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+        return response.text
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error fetching computer info: {e}")
+        return None
+
+# Function to fetch detailed information for a mobile device
+def fetch_mobile_device_info(jamf_url, device_id, token):
+    try:
+        headers = {"Accept": "application/xml", "Authorization": f"Bearer {token}"}
+        response = requests.get(f"{jamf_url}/JSSResource/mobiledevices/id/{device_id}", headers=headers)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+        return response.text
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error fetching mobile device info: {e}")
+        return None
+
+# Function to parse and format computer information
+def parse_computer_info(xml_data):
+    root = ET.fromstring(xml_data)
+    computer_info = {
+        "Computer Name": root.findtext(".//name"),
+        "Model": root.findtext(".//model"),
+        "Model Identifier": root.findtext(".//model_identifier"),
+        "Architecture Type": root.findtext(".//processor_architecture"),
+        "Serial Number": root.findtext(".//serial_number"),
+        "Primary MAC Address": root.findtext(".//mac_address"),
+        "IP Address": root.findtext(".//ip_address"),
+        "OS Version": root.findtext(".//os_version"),
+        "OS Build": root.findtext(".//os_build"),
+        "Jamf Pro Computer ID": root.findtext(".//id"),
+        "Last Inventory Update": root.findtext(".//report_date_utc"),
+        "Managed": root.findtext(".//managed"),
+        "Supervised": root.findtext(".//supervised")
+    }
+    formatted_info = "\n".join([f"{key}: {value}" for key, value in computer_info.items() if value])
+    return formatted_info
+
+# Function to parse and format mobile device information
+def parse_mobile_device_info(xml_data):
+    root = ET.fromstring(xml_data)
+    device_info = {
+        "Mobile Device Name": root.findtext(".//name"),
+        "Model": root.findtext(".//model"),
+        "Model Identifier": root.findtext(".//model_identifier"),
+        "Model Number": root.findtext(".//model_number"),
+        "Serial Number": root.findtext(".//serial_number"),
+        "Wi-Fi MAC Address": root.findtext(".//wifi_mac_address"),
+        "IP Address": root.findtext(".//ip_address"),
+        "OS Version": root.findtext(".//os_version"),
+        "OS Build": root.findtext(".//os_build"),
+        "Jamf Pro Mobile Device ID": root.findtext(".//id"),
+        "Last Inventory Update": root.findtext(".//last_inventory_update_utc"),
+        "Managed": root.findtext(".//managed"),
+        "Supervised": root.findtext(".//supervised")
+    }
+    formatted_info = "\n".join([f"{key}: {value}" for key, value in device_info.items() if value])
+    return formatted_info
+
 # Function to fetch general information of a computer or device
 def fetch_general_info(jamf_url, item_id, item_type, token):
     endpoint = f"JSSResource/{item_type}/id/{item_id}"

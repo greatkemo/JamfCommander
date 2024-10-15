@@ -3,6 +3,7 @@ from tkinter import ttk
 import logging
 import os
 from src.utils import load_token, make_classic_api_request, save_to_cache
+from src.api import fetch_general_info, parse_computer_info, parse_mobile_device_info
 import xml.etree.ElementTree as ET
 
 def setup_gui(root, authenticate_callback):
@@ -174,7 +175,8 @@ def setup_gui(root, authenticate_callback):
     
         general_info = fetch_general_info(jamf_url, member_id, "computers", token)
         if general_info:
-            display_general_info(general_info, general_info_text_computers)
+            formatted_info = parse_computer_info(general_info)
+            display_general_info(formatted_info, general_info_text_computers)
     
     def on_device_member_click(event):
         selected_item = tree_device_members.selection()[0]
@@ -191,7 +193,8 @@ def setup_gui(root, authenticate_callback):
     
         general_info = fetch_general_info(jamf_url, member_id, "mobiledevices", token)
         if general_info:
-            display_general_info(general_info, general_info_text_devices)
+            formatted_info = parse_mobile_device_info(general_info)
+            display_general_info(formatted_info, general_info_text_devices)
 
     tree_computers.bind("<Double-1>", on_computer_group_click)
     tree_devices.bind("<Double-1>", on_device_group_click)

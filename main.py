@@ -1,8 +1,9 @@
+import tkinter as tk
 from tkinter import Tk
 from src.auth import authenticate
-from src.api import fetch_computer_groups, fetch_mobile_device_groups, fetch_jamf_pro_version, make_classic_api_request 
+from src.api import fetch_computer_groups, fetch_mobile_device_groups, fetch_jamf_pro_version, fetch_computer_info, fetch_mobile_device_info, parse_computer_info, parse_mobile_device_info, make_classic_api_request
 from src.gui import setup_gui
-from src.utils import load_env_variables, save_url_to_env, get_size_from_xml, load_token_from_file
+from src.utils import load_env_variables, save_url_to_env, get_size_from_xml, load_token
 import os
 import logging
 
@@ -106,6 +107,49 @@ def authenticate_callback(jamf_url):
     else:
         status_label.config(text="AUTH FAILED", fg="red")
 
+# Function to display general information in the text widget
+def display_general_info(info, text_widget):
+    text_widget.delete("1.0", tk.END)
+    text_widget.insert(tk.END, info)
+
+# Function to handle computer member click event
+def on_computer_member_click(event):
+    selected_item = tree_computer_members.selection()[0]
+    member_id = tree_computer_members.item(selected_item, "values")[1]  # Assuming the member ID is in the second column
+    token = load_token()
+    if not token:
+        logging.error("No token found!")
+        return
+
+    jamf_url = os.getenv("JAMF_PRO_URL", "")
+    if not jamf_url:
+        logging.error("No Jamf URL found!")
+        return
+
+    general_info = fetch_computer_info(jamf_url, member_id, token)
+    if general_info:
+        formatted_info = parse_computer_info(general_info)
+        display_general_info(formatted_info, general_info_text_computers)
+
+# Function to handle device member click event
+def on_device_member_click(event):
+    selected_item = tree_device_members.selection()[0]
+    member_id = tree_device_members.item(selected_item, "values")[1]  # Assuming the member ID is in the second column
+    token = load_token()
+    if not token:
+        logging.error("No token found!")
+        return
+
+    jamf_url = os.getenv("JAMF_PRO_URL", "")
+    if not jamf_url:
+        logging.error("No Jamf URL found!")
+        return
+
+    general_info = fetch_mobile_device_info(jamf_url, member_id, token)
+    if general_info:
+        formatted_info = parse_mobile_device_info(general_info)
+        display_general_info(formatted_info, general_info_text_devices)
+
 # Initialize the Tkinter root window
 root = Tk()
 
@@ -118,6 +162,10 @@ general_info_text_computers, general_info_text_devices = setup_gui(
     root, 
     authenticate_callback  # Correctly pass the authenticate callback here
 )
+
+# Bind the click events to the tree views
+tree_computer_members.bind("<ButtonRelease-1>", on_computer_member_click)
+tree_device_members.bind("<ButtonRelease-1>", on_device_member_click)
 
 # Load the URL from the environment variable and pre-fill the entry field if available
 saved_url = os.getenv("JAMF_PRO_URL", "")
